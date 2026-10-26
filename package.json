@@ -1,0 +1,23 @@
+{
+  "name": "versemeet-root",
+  "version": "1.0.0",
+  "description": "VerseMeet - Smart Educational Video Conferencing Platform",
+  "private": true,
+  "scripts": {
+    "dev:server": "npm run dev --prefix server",
+    "dev:client": "npm run dev --prefix client",
+    "build:client": "npm run build --prefix client",
+    "test:e2e": "npm test --prefix server"
+  },
+  "keywords": [
+    "education",
+    "webrtc",
+    "video-conferencing",
+    "online-classroom",
+    "socket.io",
+    "react",
+    "nodejs"
+  ],
+  "author": "VerseMeet Team",
+  "license": "MIT"
+}
