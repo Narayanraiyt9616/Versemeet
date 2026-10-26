@@ -34,7 +34,9 @@ async function bootstrap() {
     logger.info(`===============================================`);
     logger.info(` VerseMeet Backend Server Running on Port ${PORT}`);
     logger.info(` Ready for WebRTC Educational Video Conferencing`);
-    logger.info(` Health check: http://localhost:${PORT}/api/health`);
+    logger.info(` Local Health check: http://localhost:${PORT}/api/health`);
+    logger.info(` Live Production Backend: https://versemeet.onrender.com`);
+    logger.info(` Live Production Frontend: https://versemeet-1.onrender.com`);
     logger.info(`===============================================`);
   });
 

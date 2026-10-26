@@ -54,7 +54,8 @@ export default function CreateMeeting() {
 
   const getMeetingUrl = () => {
     if (!createdMeeting) return '';
-    return `${window.location.origin}/meeting/${createdMeeting.meetingCode}`;
+    const origin = import.meta.env.VITE_CLIENT_URL || window.location.origin;
+    return `${origin}/meeting/${createdMeeting.meetingCode}`;
   };
 
   const handleCopyLink = () => {

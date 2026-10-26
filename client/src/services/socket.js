@@ -4,7 +4,7 @@ let socket = null;
 
 export function getSocket() {
   if (!socket) {
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || window.location.origin;
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'https://versemeet.onrender.com';
     socket = io(socketUrl, {
       autoConnect: true,
       transports: ['websocket', 'polling'],

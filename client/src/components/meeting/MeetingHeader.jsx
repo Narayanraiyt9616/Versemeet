@@ -38,7 +38,8 @@ export default function MeetingHeader({
   };
 
   const handleCopyLink = () => {
-    const link = `${window.location.origin}/meeting/${meetingCode}`;
+    const origin = import.meta.env.VITE_CLIENT_URL || window.location.origin;
+    const link = `${origin}/meeting/${meetingCode}`;
     navigator.clipboard.writeText(link);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);

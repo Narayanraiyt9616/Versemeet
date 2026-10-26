@@ -13,6 +13,8 @@ app.use(helmet({
 }));
 
 const allowedOrigins = [
+  'https://versemeet-1.onrender.com',
+  'https://versemeet.onrender.com',
   'http://localhost:5173',
   'http://localhost:3000',
   'http://127.0.0.1:5173',
@@ -21,8 +23,15 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow local development and mobile apps/same network browsers
-    if (!origin || allowedOrigins.includes(origin) || origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1') || origin.startsWith('http://192.168.')) {
+    // Allow local development, Render deployments, and configured origins
+    if (
+      !origin ||
+      allowedOrigins.includes(origin) ||
+      origin.endsWith('.onrender.com') ||
+      origin.startsWith('http://localhost') ||
+      origin.startsWith('http://127.0.0.1') ||
+      origin.startsWith('http://192.168.')
+    ) {
       callback(null, true);
     } else {
       callback(null, true); // Permissive for local peer tests
@@ -40,6 +49,8 @@ app.get('/api/health', (req, res) => {
     status: 'ok',
     brand: 'CampusVerse Meet',
     version: '1.0.0',
+    frontendUrl: process.env.CLIENT_URL || 'https://versemeet-1.onrender.com',
+    backendUrl: process.env.BACKEND_URL || 'https://versemeet.onrender.com',
     database: getDatabaseStatus(),
     timestamp: new Date().toISOString()
   });

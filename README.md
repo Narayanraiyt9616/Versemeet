@@ -138,7 +138,15 @@ Versemeet/
 
 ---
 
-## 🚀 Running the Project
+## 🌐 Live Production Deployment
+
+- **Frontend Application**: [https://versemeet-1.onrender.com](https://versemeet-1.onrender.com)
+- **Backend API Server**: [https://versemeet.onrender.com](https://versemeet.onrender.com)
+- **Backend Health Check**: [https://versemeet.onrender.com/api/health](https://versemeet.onrender.com/api/health)
+
+---
+
+## 🚀 Running the Project Locally
 
 ### 1. Start the Backend Server (Port 5000)
 ```bash
@@ -153,8 +161,8 @@ npm run dev
 ```
 
 Open your browser to:
-- **Application**: [http://localhost:5173](http://localhost:5173)
-- **API Health**: [http://localhost:5000/api/health](http://localhost:5000/api/health)
+- **Local Application**: [http://localhost:5173](http://localhost:5173)
+- **Local API Health**: [http://localhost:5000/api/health](http://localhost:5000/api/health)
 
 ---
 

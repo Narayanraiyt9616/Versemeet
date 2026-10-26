@@ -67,7 +67,8 @@ export default function Home() {
   };
 
   const getMeetingUrl = (code) => {
-    return `${window.location.origin}/meeting/${code}`;
+    const origin = import.meta.env.VITE_CLIENT_URL || window.location.origin;
+    return `${origin}/meeting/${code}`;
   };
 
   const handleCopyLink = () => {

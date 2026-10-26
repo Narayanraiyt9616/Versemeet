@@ -1,6 +1,6 @@
 import { io } from 'socket.io-client';
 
-const BACKEND_URL = 'http://localhost:5000';
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5000';
 
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -43,7 +43,9 @@ async function runMultiUserMeetingTest() {
     { input: 'http://localhost:5173/meeting/vm-100-abcd-200?ref=share&user=1', expected: 'vm-100-abcd-200' },
     { input: 'http://localhost:5173/join/vm-100-abcd-200/', expected: 'vm-100-abcd-200' },
     { input: 'http://localhost:5173/waiting/vm-100-abcd-200#video', expected: 'vm-100-abcd-200' },
-    { input: 'https://campusverse.edu/meeting/VM-100-ABCD-200?track=cs101', expected: 'vm-100-abcd-200' }
+    { input: 'https://campusverse.edu/meeting/VM-100-ABCD-200?track=cs101', expected: 'vm-100-abcd-200' },
+    { input: 'https://versemeet-1.onrender.com/meeting/vm-100-abcd-200', expected: 'vm-100-abcd-200' },
+    { input: 'https://versemeet-1.onrender.com/join/vm-100-abcd-200?ref=render_share', expected: 'vm-100-abcd-200' }
   ];
 
   for (const item of testInputs) {
@@ -52,7 +54,7 @@ async function runMultiUserMeetingTest() {
       throw new Error(`Parser failed for "${item.input}". Expected: "${item.expected}", Got: "${result}"`);
     }
   }
-  console.log('  ✓ All 7 tricky link and code formats parsed and normalized perfectly.');
+  console.log('  ✓ All 9 tricky link and code formats parsed and normalized perfectly.');
   passedSteps++;
 
   // -------------------------------------------------------------
@@ -80,7 +82,8 @@ async function runMultiUserMeetingTest() {
   }
 
   const { meetingCode, hostToken, title, hostName } = createData.data;
-  const shareableMeetingLink = `http://localhost:5173/meeting/${meetingCode}`;
+  const clientBase = process.env.CLIENT_URL || 'https://versemeet-1.onrender.com';
+  const shareableMeetingLink = `${clientBase}/meeting/${meetingCode}`;
 
   console.log(`  ✓ Meeting Created Successfully:`);
   console.log(`    - Meeting ID:   ${meetingCode}`);
