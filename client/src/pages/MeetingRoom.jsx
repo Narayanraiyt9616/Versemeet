@@ -108,9 +108,15 @@ export default function MeetingRoom() {
         const socket = getSocket();
         socketRef.current = socket;
 
-        // Check if user is Host
-        const hostToken = localStorage.getItem(`hostToken_${cleanCode}`);
-        const hostName = localStorage.getItem(`hostName_${cleanCode}`) || 'Host';
+        // Check if user is Host (prioritize sessionStorage for the creator's tab)
+        const isParticipantSession = sessionStorage.getItem(`versemeet_participant_${cleanCode}`) || sessionStorage.getItem('versemeet_name_preset');
+        let hostToken = sessionStorage.getItem(`hostToken_${cleanCode}`);
+        let hostName = sessionStorage.getItem(`hostName_${cleanCode}`);
+
+        if (!hostToken && !isParticipantSession) {
+          hostToken = localStorage.getItem(`hostToken_${cleanCode}`);
+          hostName = localStorage.getItem(`hostName_${cleanCode}`) || 'Host';
+        }
 
         let userIsHost = false;
         if (hostToken) {
@@ -129,7 +135,7 @@ export default function MeetingRoom() {
           const hostPart = {
             socketId: socket.id,
             participantId: `host-${socket.id?.slice(0, 5)}`,
-            name: hostName,
+            name: hostName || 'Host',
             role: 'host',
             isMuted: false,
             isVideoOff: false
@@ -143,7 +149,7 @@ export default function MeetingRoom() {
           socket.emit('host:join', {
             meetingCode: cleanCode,
             hostToken,
-            hostName
+            hostName: hostPart.name
           });
         } else {
           // Regular participant
@@ -164,7 +170,7 @@ export default function MeetingRoom() {
             socketId: socket.id,
             participantId: parsedPart.participantId,
             name: parsedPart.name,
-            role: parsedPart.role || 'participant',
+            role: 'participant', // STRICT: Joiners are always 'participant'
             isMuted: !!parsedPart.isMuted,
             isVideoOff: !!parsedPart.isVideoOff
           };
@@ -178,7 +184,7 @@ export default function MeetingRoom() {
             meetingCode: cleanCode,
             participantId: studentPart.participantId,
             name: studentPart.name,
-            role: studentPart.role,
+            role: 'participant',
             isMuted: studentPart.isMuted,
             isVideoOff: studentPart.isVideoOff
           });
@@ -630,6 +636,7 @@ export default function MeetingRoom() {
           isVideoOff={isVideoOff}
           speakingParticipants={speakingParticipants}
           onStopScreenShare={stopScreenShare}
+          isHost={isHost}
         />
 
         {/* 5. FLOATING EMOJI REACTIONS OVERLAY */}

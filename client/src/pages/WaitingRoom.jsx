@@ -47,8 +47,12 @@ export default function WaitingRoom() {
     async function checkMeeting() {
       try {
         setLoading(true);
-        // If this user is the host, check localStorage for hostToken
-        const hostToken = localStorage.getItem(`hostToken_${cleanCode}`);
+        // If this user is the creator host, check sessionStorage (or localStorage if not joining as participant)
+        const isParticipantSession = sessionStorage.getItem('versemeet_name_preset') || sessionStorage.getItem(`versemeet_part_id_${cleanCode}`);
+        let hostToken = sessionStorage.getItem(`hostToken_${cleanCode}`);
+        if (!hostToken && !isParticipantSession) {
+          hostToken = localStorage.getItem(`hostToken_${cleanCode}`);
+        }
         if (hostToken) {
           const isHost = await api.verifyHost(cleanCode, hostToken);
           if (isHost) {

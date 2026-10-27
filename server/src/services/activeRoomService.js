@@ -44,6 +44,14 @@ class ActiveRoomService {
         activePresenterSocketId: null
       });
       logger.info(`Active room initialized for meeting: ${code}`);
+    } else {
+      const room = this.rooms.get(code);
+      if (!room.hostToken && meetingData.hostToken) {
+        room.hostToken = meetingData.hostToken;
+      }
+      if (meetingData.hostName && room.hostName === 'Host') {
+        room.hostName = meetingData.hostName;
+      }
     }
     return this.rooms.get(code);
   }
@@ -126,7 +134,7 @@ class ActiveRoomService {
       socketId,
       participantId: pending.participantId,
       name: pending.name,
-      role: pending.role,
+      role: 'participant', // STRICT: Joiners are always 'participant', never 'host'
       isMuted: false,
       isVideoOff: false,
       isHandRaised: false,
@@ -156,7 +164,7 @@ class ActiveRoomService {
     const code = this._normCode(meetingCode);
     const room = this.rooms.get(code);
     if (!room) return false;
-    if (!room.settings.isWaitingRoomEnabled) return true;
+    // Strict waiting room admission check: participant must have been approved by the host
     return room.admittedParticipants.has(participantId);
   }
 
@@ -170,7 +178,7 @@ class ActiveRoomService {
       socketId,
       participantId: participantData.participantId,
       name: participantData.name,
-      role: participantData.role || 'participant',
+      role: participantData.role === 'host' ? 'host' : 'participant',
       isMuted: !!participantData.isMuted,
       isVideoOff: !!participantData.isVideoOff,
       isHandRaised: false,
@@ -189,11 +197,8 @@ class ActiveRoomService {
     const room = this.rooms.get(code);
     if (!room) return null;
 
-    const isAdmitted =
-      !room.settings.isWaitingRoomEnabled ||
-      room.admittedParticipants.has(participantData.participantId) ||
-      participantData.role === 'host';
-
+    // Strict admission check: must be in admittedParticipants
+    const isAdmitted = room.admittedParticipants.has(participantData.participantId);
     if (!isAdmitted) return null;
 
     // Clean any prior socket association for this participantId
@@ -207,7 +212,7 @@ class ActiveRoomService {
       socketId,
       participantId: participantData.participantId,
       name: participantData.name || 'Participant',
-      role: participantData.role || 'participant',
+      role: 'participant', // STRICT: Participants entering are always 'participant'
       isMuted: !!participantData.isMuted,
       isVideoOff: !!participantData.isVideoOff,
       isHandRaised: false,

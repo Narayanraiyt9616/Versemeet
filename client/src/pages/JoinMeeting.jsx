@@ -33,6 +33,8 @@ export default function JoinMeeting() {
         return;
       }
 
+      sessionStorage.removeItem(`hostToken_${code}`);
+      sessionStorage.removeItem(`hostName_${code}`);
       sessionStorage.setItem('versemeet_name_preset', nameVal.trim());
       navigate(`/waiting/${code}?name=${encodeURIComponent(nameVal.trim())}`);
     } catch (err) {

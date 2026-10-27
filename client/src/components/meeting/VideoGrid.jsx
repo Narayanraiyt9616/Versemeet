@@ -13,7 +13,8 @@ export default function VideoGrid({
   isMuted = false,
   isVideoOff = false,
   speakingParticipants = new Set(),
-  onStopScreenShare
+  onStopScreenShare,
+  isHost = false
 }) {
   const [pinnedSocketId, setPinnedSocketId] = useState(null);
   const [viewPreference, setViewPreference] = useState('presentation'); // 'presentation' or 'grid'
@@ -31,11 +32,11 @@ export default function VideoGrid({
   // Compile all participant tiles
   const allTiles = [];
 
-  // 1. Local participant
+  // 1. Local participant: ONLY the verified host gets 'host' role, all joiners are 'participant'
   allTiles.push({
     socketId: 'local',
     name: localParticipant?.name || 'You',
-    role: localParticipant?.role || 'host',
+    role: isHost ? 'host' : 'participant',
     isLocal: true,
     stream: localStream,
     isMuted,
@@ -53,7 +54,7 @@ export default function VideoGrid({
     allTiles.push({
       socketId: p.socketId,
       name: p.name,
-      role: p.role,
+      role: p.role === 'host' ? 'host' : 'participant',
       isLocal: false,
       stream: remoteStreams[p.socketId] || null,
       isMuted: p.isMuted,
@@ -68,7 +69,7 @@ export default function VideoGrid({
     ? {
         socketId: 'screen-local',
         name: `${localParticipant?.name || 'You'} (Shared Screen)`,
-        role: localParticipant?.role,
+        role: isHost ? 'host' : 'participant',
         isLocal: true,
         stream: screenStream,
         isVideoOff: false,

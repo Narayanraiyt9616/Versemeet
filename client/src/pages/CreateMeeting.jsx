@@ -40,7 +40,9 @@ export default function CreateMeeting() {
       });
 
       const cleanCode = (data.meetingCode || '').trim().toLowerCase();
-      // Store host credentials for this meeting in localStorage
+      // Store host credentials in sessionStorage (for this creator tab) and localStorage (persistence)
+      sessionStorage.setItem(`hostToken_${cleanCode}`, data.hostToken);
+      sessionStorage.setItem(`hostName_${cleanCode}`, data.hostName);
       localStorage.setItem(`hostToken_${cleanCode}`, data.hostToken);
       localStorage.setItem(`hostName_${cleanCode}`, data.hostName);
 

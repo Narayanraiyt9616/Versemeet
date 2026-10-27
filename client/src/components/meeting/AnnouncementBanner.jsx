@@ -25,7 +25,7 @@ export default function AnnouncementBanner({
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-teal-700">
-              {announcement.senderName} ({announcement.senderRole})
+              {announcement.senderName}{announcement.senderRole === 'host' ? ' (Host)' : ''}
             </span>
             <button
               type="button"

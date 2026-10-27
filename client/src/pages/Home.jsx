@@ -54,7 +54,9 @@ export default function Home() {
       });
 
       const cleanCode = (data.meetingCode || '').trim().toLowerCase();
-      // Save host token and host name in localStorage for authorization
+      // Save host token and host name in sessionStorage (for this creator tab) and localStorage
+      sessionStorage.setItem(`hostToken_${cleanCode}`, data.hostToken);
+      sessionStorage.setItem(`hostName_${cleanCode}`, data.hostName);
       localStorage.setItem(`hostToken_${cleanCode}`, data.hostToken);
       localStorage.setItem(`hostName_${cleanCode}`, data.hostName);
 
@@ -114,7 +116,9 @@ export default function Home() {
         return;
       }
 
-      // Store initial pre-fill for waiting room
+      // Explicitly mark this session as a participant and clear any accidental host credentials in this tab
+      sessionStorage.removeItem(`hostToken_${code}`);
+      sessionStorage.removeItem(`hostName_${code}`);
       sessionStorage.setItem(`versemeet_name_preset`, joinNameInput.trim());
 
       // Navigate to waiting room

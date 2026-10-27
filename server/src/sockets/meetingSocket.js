@@ -21,13 +21,21 @@ export function setupMeetingSockets(io) {
         const code = norm(meetingCode);
         currentMeetingCode = code;
 
+        // Strictly verify host authorization with meetingService database/in-memory store
+        const isHostAuthorized = await meetingService.verifyHost(code, hostToken);
+        if (!isHostAuthorized) {
+          logger.warn(`Unauthorized host join attempt for meeting ${code} with token: ${hostToken}`);
+          socket.emit('error:unauthorized', { message: 'Invalid host credentials. You are not authorized as host.' });
+          return;
+        }
+
         const room = activeRoomService.getOrCreateRoom(code, {
           title: 'CampusVerse Meeting',
           hostToken,
           hostName
         });
 
-        // Verify host authorization
+        // Verify host authorization matches active room
         if (room.hostToken && room.hostToken !== hostToken) {
           socket.emit('error:unauthorized', { message: 'Invalid host credentials for this meeting.' });
           return;
@@ -68,7 +76,7 @@ export function setupMeetingSockets(io) {
     // ---------------------------------------------------------
     // 2. PARTICIPANT JOIN REQUEST & WAITING ROOM
     // ---------------------------------------------------------
-    socket.on('join:request', async ({ meetingCode, participantId, name, role = 'participant' }) => {
+    socket.on('join:request', async ({ meetingCode, participantId, name }) => {
       try {
         const code = norm(meetingCode);
         currentMeetingCode = code;
@@ -88,29 +96,11 @@ export function setupMeetingSockets(io) {
           return;
         }
 
-        // If waiting room is disabled, admit immediately
-        if (!room.settings.isWaitingRoomEnabled) {
-          const participant = activeRoomService.addAdmittedParticipant(code, socket.id, {
-            participantId,
-            name: name ? name.trim() : 'Guest',
-            role
-          });
-          socket.join(`meeting:${code}`);
-          socket.emit('join:approved', {
-            meetingCode: code,
-            participant,
-            participants: activeRoomService.getAllParticipants(code),
-            settings: room.settings
-          });
-          socket.to(`meeting:${code}`).emit('participant:joined', { participant });
-          return;
-        }
-
-        // Place participant in waiting room
+        // Place participant in waiting room - MANDATORY for all joiners!
         const request = activeRoomService.addPendingRequest(code, socket.id, {
           participantId,
           name: name ? name.trim() : 'Guest',
-          role
+          role: 'participant'
         });
 
         socket.join(`waiting:${code}`);
@@ -139,7 +129,7 @@ export function setupMeetingSockets(io) {
     // ---------------------------------------------------------
     // 3. PARTICIPANT ENTER ROOM (AFTER WAITING ROOM APPROVAL)
     // ---------------------------------------------------------
-    socket.on('participant:enter-room', async ({ meetingCode, participantId, name, role = 'participant', isMuted = false, isVideoOff = false }) => {
+    socket.on('participant:enter-room', async ({ meetingCode, participantId, name, isMuted = false, isVideoOff = false }) => {
       try {
         const code = norm(meetingCode);
         currentMeetingCode = code;
@@ -157,18 +147,19 @@ export function setupMeetingSockets(io) {
           return;
         }
 
-        // Check if participant has been admitted
+        // Strict check: Participant MUST be admitted by the host
         const isAdmitted = activeRoomService.isParticipantAdmitted(code, participantId);
-        if (!isAdmitted && room.settings.isWaitingRoomEnabled) {
+        if (!isAdmitted) {
+          logger.warn(`Unauthorized enter-room attempt by ${participantId} for meeting ${code}`);
           socket.emit('participant:not-admitted', { reason: 'Please wait in the waiting room for host admission.' });
           return;
         }
 
-        // Admit/sync participant in room state
+        // Admit/sync participant in room state - ALWAYS role: 'participant'
         const participant = activeRoomService.admitOrSyncParticipant(code, socket.id, {
           participantId,
           name: name ? name.trim() : 'Guest',
-          role,
+          role: 'participant',
           isMuted,
           isVideoOff
         });
