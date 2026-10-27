@@ -370,41 +370,108 @@ export function useWebRTC({
     return () => clearInterval(statsInterval);
   }, []);
 
-  // Toggle Microphone
-  const toggleAudio = useCallback(() => {
-    if (!localStreamRef.current) return;
-    const audioTrack = localStreamRef.current.getAudioTracks()[0];
-    if (audioTrack) {
-      audioTrack.enabled = !audioTrack.enabled;
-      setIsMuted(!audioTrack.enabled);
+  // Explicit Mute Audio (used by self-mute and remote force mute)
+  const muteAudio = useCallback((shouldMute = true) => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getAudioTracks().forEach(track => {
+        track.enabled = !shouldMute;
+      });
+    }
+    if (localStream) {
+      localStream.getAudioTracks().forEach(track => {
+        track.enabled = !shouldMute;
+      });
+    }
+    peerConnectionsRef.current.forEach(pc => {
+      try {
+        pc.getSenders().forEach(sender => {
+          if (sender.track && sender.track.kind === 'audio') {
+            sender.track.enabled = !shouldMute;
+          }
+        });
+      } catch (e) {
+        console.warn('Error setting sender audio track enabled:', e);
+      }
+    });
 
+    setIsMuted(shouldMute);
+
+    if (shouldMute) {
+      updateSpeakingState(activeSocket?.id, false);
       if (activeSocket && meetingCode) {
-        activeSocket.emit('media:state-update', {
+        activeSocket.emit('media:active-speaker', {
           meetingCode,
-          isMuted: !audioTrack.enabled,
-          isVideoOff
+          isSpeaking: false
         });
       }
     }
-  }, [activeSocket, meetingCode, isVideoOff]);
+
+    if (activeSocket && meetingCode) {
+      activeSocket.emit('media:state-update', {
+        meetingCode,
+        isMuted: shouldMute,
+        isVideoOff
+      });
+    }
+  }, [activeSocket, meetingCode, isVideoOff, localStream]);
+
+  // Toggle Microphone
+  const toggleAudio = useCallback(() => {
+    let currentEnabled = true;
+    if (localStreamRef.current) {
+      const track = localStreamRef.current.getAudioTracks()[0];
+      if (track) currentEnabled = track.enabled;
+    } else if (localStream) {
+      const track = localStream.getAudioTracks()[0];
+      if (track) currentEnabled = track.enabled;
+    }
+    const nextEnabled = !currentEnabled;
+    muteAudio(!nextEnabled);
+  }, [muteAudio, localStream]);
 
   // Toggle Camera
   const toggleVideo = useCallback(() => {
-    if (!localStreamRef.current) return;
-    const videoTrack = localStreamRef.current.getVideoTracks()[0];
-    if (videoTrack) {
-      videoTrack.enabled = !videoTrack.enabled;
-      setIsVideoOff(!videoTrack.enabled);
-
-      if (activeSocket && meetingCode) {
-        activeSocket.emit('media:state-update', {
-          meetingCode,
-          isMuted,
-          isVideoOff: !videoTrack.enabled
-        });
-      }
+    let currentEnabled = true;
+    if (localStreamRef.current) {
+      const track = localStreamRef.current.getVideoTracks()[0];
+      if (track) currentEnabled = track.enabled;
+    } else if (localStream) {
+      const track = localStream.getVideoTracks()[0];
+      if (track) currentEnabled = track.enabled;
     }
-  }, [activeSocket, meetingCode, isMuted]);
+    const nextEnabled = !currentEnabled;
+    const newIsVideoOff = !nextEnabled;
+
+    if (localStreamRef.current) {
+      localStreamRef.current.getVideoTracks().forEach(track => {
+        track.enabled = nextEnabled;
+      });
+    }
+    if (localStream) {
+      localStream.getVideoTracks().forEach(track => {
+        track.enabled = nextEnabled;
+      });
+    }
+    peerConnectionsRef.current.forEach(pc => {
+      try {
+        pc.getSenders().forEach(sender => {
+          if (sender.track && sender.track.kind === 'video') {
+            sender.track.enabled = nextEnabled;
+          }
+        });
+      } catch (e) {}
+    });
+
+    setIsVideoOff(newIsVideoOff);
+
+    if (activeSocket && meetingCode) {
+      activeSocket.emit('media:state-update', {
+        meetingCode,
+        isMuted,
+        isVideoOff: newIsVideoOff
+      });
+    }
+  }, [activeSocket, meetingCode, isMuted, localStream]);
 
   // Change video resolution
   const changeResolution = useCallback(async (preset) => {
@@ -545,6 +612,7 @@ export function useWebRTC({
     initializeMedia,
     toggleAudio,
     toggleVideo,
+    muteAudio,
     startScreenShare,
     stopScreenShare,
     changeResolution,

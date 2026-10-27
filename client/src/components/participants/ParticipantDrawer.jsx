@@ -29,6 +29,12 @@ export default function ParticipantDrawer({
 }) {
   const [activeTab, setActiveTab] = useState('admitted'); // admitted, requests, settings
 
+  const uniqueParticipants = React.useMemo(() => {
+    return Array.from(
+      new Map((participants || []).filter(Boolean).map(p => [p.socketId, p])).values()
+    );
+  }, [participants]);
+
   if (!isOpen) return null;
 
   return (
@@ -43,7 +49,7 @@ export default function ParticipantDrawer({
             <h3 className="font-bold text-sm text-slate-900 tracking-tight flex items-center gap-2">
               Participants
               <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-                {participants.length}
+                {uniqueParticipants.length}
               </span>
             </h3>
           </div>
@@ -51,7 +57,7 @@ export default function ParticipantDrawer({
         <button
           type="button"
           onClick={onClose}
-          className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+          className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
           title="Close drawer"
         >
           <X className="w-4 h-4" />
@@ -69,7 +75,7 @@ export default function ParticipantDrawer({
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
-          In Meeting ({participants.length})
+          In Meeting ({uniqueParticipants.length})
         </button>
 
         {isHost && (
@@ -109,7 +115,7 @@ export default function ParticipantDrawer({
       {/* Tab 1: Admitted Participants */}
       {activeTab === 'admitted' && (
         <div className="flex-1 overflow-y-auto p-4 space-y-2.5 scrollbar-thin bg-white">
-          {participants.map((p) => (
+          {uniqueParticipants.map((p) => (
             <div
               key={p.socketId}
               className="p-3 rounded-2xl bg-slate-50/80 hover:bg-slate-100/80 border border-slate-200/80 flex items-center justify-between group transition-all shadow-xs"

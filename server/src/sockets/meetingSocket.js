@@ -100,6 +100,14 @@ export function setupMeetingSockets(io) {
           return;
         }
 
+        // Check if participant was removed/banned by host
+        if (activeRoomService.isParticipantBanned(code, participantId, socket.id)) {
+          socket.emit('join:rejected', {
+            reason: 'You were removed from this meeting by the host and cannot rejoin without permission.'
+          });
+          return;
+        }
+
         // Place participant in waiting room - MANDATORY for all joiners!
         const request = activeRoomService.addPendingRequest(code, socket.id, {
           participantId,
@@ -148,6 +156,14 @@ export function setupMeetingSockets(io) {
         const room = activeRoomService.getOrCreateRoom(code, validation.meeting);
         if (room.status === 'ended') {
           socket.emit('participant:not-admitted', { reason: 'This meeting has ended.' });
+          return;
+        }
+
+        // Check if participant was removed/banned by host
+        if (activeRoomService.isParticipantBanned(code, participantId, socket.id)) {
+          socket.emit('participant:not-admitted', {
+            reason: 'You were removed from this meeting by the host and cannot rejoin.'
+          });
           return;
         }
 
@@ -443,20 +459,29 @@ export function setupMeetingSockets(io) {
     // ---------------------------------------------------------
     socket.on('host:mute-participant', ({ meetingCode, targetSocketId }) => {
       const code = norm(meetingCode);
-      if (!isHostSession && !activeRoomService.isHost(code, socket.id)) return;
+      if (!isHostSession && !activeRoomService.isHost(code, socket.id)) {
+        socket.emit('error:unauthorized', { message: 'Only the host can mute participants.' });
+        return;
+      }
+
+      activeRoomService.updateParticipantState(code, targetSocketId, { isMuted: true });
 
       io.to(targetSocketId).emit('media:force-mute');
-      activeRoomService.updateParticipantState(code, targetSocketId, { isMuted: true });
 
       io.to(`meeting:${code}`).emit('participant:media-updated', {
         socketId: targetSocketId,
         isMuted: true
       });
+
+      logger.info(`Host muted participant on socket ${targetSocketId} in meeting ${code}`);
     });
 
     socket.on('host:kick-participant', ({ meetingCode, targetSocketId }) => {
       const code = norm(meetingCode);
-      if (!isHostSession && !activeRoomService.isHost(code, socket.id)) return;
+      if (!isHostSession && !activeRoomService.isHost(code, socket.id)) {
+        socket.emit('error:unauthorized', { message: 'Only the host can remove participants.' });
+        return;
+      }
 
       const removed = activeRoomService.kickParticipant(code, targetSocketId);
       if (removed) {
@@ -467,12 +492,15 @@ export function setupMeetingSockets(io) {
         const targetSocket = io.sockets.sockets.get(targetSocketId);
         if (targetSocket) {
           targetSocket.leave(`meeting:${code}`);
+          targetSocket.disconnect(true);
         }
 
         io.to(`meeting:${code}`).emit('participant:left', {
           socketId: targetSocketId,
           name: removed.name
         });
+
+        logger.info(`Host removed participant ${removed.name} (${targetSocketId}) from meeting ${code}`);
       }
     });
 

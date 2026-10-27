@@ -54,6 +54,11 @@ export default function MeetingRoom() {
   const [isHandRaised, setIsHandRaised] = useState(false);
 
   const socketRef = useRef(null);
+  const isChatOpenRef = useRef(isChatOpen);
+
+  useEffect(() => {
+    isChatOpenRef.current = isChatOpen;
+  }, [isChatOpen]);
 
   // Notification Dispatchers
   const addNotification = useCallback((notif) => {
@@ -86,6 +91,7 @@ export default function MeetingRoom() {
     initializeMedia,
     toggleAudio,
     toggleVideo,
+    muteAudio,
     startScreenShare,
     stopScreenShare,
     changeResolution,
@@ -342,22 +348,30 @@ export default function MeetingRoom() {
       setParticipants(prev =>
         prev.map(p => (p.socketId === socketId ? { ...p, isMuted: m, isVideoOff: v } : p))
       );
+      if (socketRef.current?.id === socketId) {
+        setLocalParticipant(prev => prev ? { ...prev, isMuted: m, isVideoOff: v } : prev);
+      }
     };
 
     // Force mute from host
     const handleForceMute = () => {
-      setIsMuted(true);
-      if (localStream) {
-        const audioTrack = localStream.getAudioTracks()[0];
-        if (audioTrack) audioTrack.enabled = false;
-      }
+      muteAudio(true);
+      addNotification({
+        type: 'info',
+        title: 'Microphone Muted',
+        message: 'The host has muted your microphone.'
+      });
     };
 
     // Participant removed by host
     const handleParticipantRemoved = ({ reason }) => {
+      sessionStorage.removeItem(`versemeet_participant_${cleanCode}`);
+      sessionStorage.removeItem(`versemeet_part_id_${cleanCode}`);
+      sessionStorage.removeItem(`versemeet_part_name_${cleanCode}`);
+      sessionStorage.removeItem('versemeet_name_preset');
       cleanupMedia();
       disconnectSocket();
-      navigate(`/meeting/${cleanCode}/ended?reason=removed&msg=${encodeURIComponent(reason)}`);
+      navigate(`/meeting/${cleanCode}/ended?reason=removed&msg=${encodeURIComponent(reason || 'You were removed from the meeting by the host.')}`);
     };
 
     // Host ended meeting for all
@@ -370,7 +384,7 @@ export default function MeetingRoom() {
     // Chat received
     const handleChatReceived = (msg) => {
       setMessages(prev => [...prev, msg]);
-      if (!isChatOpen) {
+      if (!isChatOpenRef.current) {
         setUnreadChatCount(prev => prev + 1);
       }
     };
@@ -389,16 +403,21 @@ export default function MeetingRoom() {
     };
 
     // Hand toggled
-    const handleHandToggled = ({ socketId, isHandRaised: raised }) => {
+    const handleHandToggled = ({ socketId, isHandRaised: raised, name }) => {
+      if (socket.id === socketId) {
+        setIsHandRaised(!!raised);
+        setLocalParticipant(prev => prev ? { ...prev, isHandRaised: !!raised } : prev);
+      }
       if (raised) {
         audioAlert.playHandRaisedChime();
         setParticipants(prev => {
           const p = prev.find(part => part.socketId === socketId);
-          if (p) {
+          const partName = name || p?.name || 'A participant';
+          if (p && socketId !== socket.id) {
             addNotification({
               type: 'hand',
               title: 'Hand Raised',
-              message: `${p.name} raised their hand.`
+              message: `${partName} raised their hand.`
             });
           }
           return prev.map(part => (part.socketId === socketId ? { ...part, isHandRaised: raised } : part));
@@ -466,7 +485,7 @@ export default function MeetingRoom() {
       socket.off('meeting:settings-updated', handleSettingsUpdated);
       socket.off('screen:presenter-changed', handlePresenterChanged);
     };
-  }, [cleanCode, navigate, isChatOpen, cleanupMedia, createPeerConnection, localStream, setIsMuted, addNotification]);
+  }, [cleanCode, navigate, cleanupMedia, createPeerConnection, muteAudio, addNotification]);
 
   // Host Actions
   const handleApproveRequest = useCallback((targetSocketId) => {
@@ -526,6 +545,7 @@ export default function MeetingRoom() {
   const handleToggleHand = useCallback(() => {
     const nextState = !isHandRaised;
     setIsHandRaised(nextState);
+    setLocalParticipant(prev => prev ? { ...prev, isHandRaised: nextState } : prev);
     socketRef.current?.emit('hand:toggle', {
       meetingCode: cleanCode,
       isRaised: nextState
@@ -643,6 +663,7 @@ export default function MeetingRoom() {
           isLocalScreenSharing={isScreenSharing}
           isMuted={isMuted}
           isVideoOff={isVideoOff}
+          isHandRaised={isHandRaised}
           speakingParticipants={speakingParticipants}
           onStopScreenShare={stopScreenShare}
           isHost={isHost}
@@ -714,6 +735,7 @@ export default function MeetingRoom() {
         onSendMessage={handleSendMessage}
         isChatAllowed={settings.allowStudentChat}
         isHost={isHost}
+        currentSocketId={socketRef.current?.id}
       />
 
       <AnnouncementModal

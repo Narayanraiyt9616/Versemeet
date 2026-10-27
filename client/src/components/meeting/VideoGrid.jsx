@@ -14,7 +14,8 @@ export default function VideoGrid({
   isVideoOff = false,
   speakingParticipants = new Set(),
   onStopScreenShare,
-  isHost = false
+  isHost = false,
+  isHandRaised = false
 }) {
   const [pinnedSocketId, setPinnedSocketId] = useState(null);
   const [viewPreference, setViewPreference] = useState('presentation'); // 'presentation' or 'grid'
@@ -41,6 +42,7 @@ export default function VideoGrid({
     stream: localStream,
     isMuted,
     isVideoOff,
+    isHandRaised: !!isHandRaised || !!localParticipant?.isHandRaised,
     isSpeaking:
       speakingParticipants.has('local') ||
       speakingParticipants.has(localParticipant?.socketId),
@@ -59,6 +61,7 @@ export default function VideoGrid({
       stream: remoteStreams[p.socketId] || null,
       isMuted: p.isMuted,
       isVideoOff: p.isVideoOff,
+      isHandRaised: !!p.isHandRaised,
       isSpeaking: speakingParticipants.has(p.socketId),
       isScreenSharing: p.isScreenSharing || p.socketId === activePresenterSocketId
     });

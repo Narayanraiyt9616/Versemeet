@@ -261,16 +261,34 @@ class ActiveRoomService {
     const room = this.rooms.get(code);
     if (!room) return null;
 
+    if (!room.bannedParticipants) {
+      room.bannedParticipants = new Set();
+    }
+
     const participant = room.participants.get(targetSocketId);
     if (participant) {
       room.participants.delete(targetSocketId);
       room.admittedParticipants.delete(participant.participantId);
+      if (participant.participantId) {
+        room.bannedParticipants.add(participant.participantId);
+      }
       if (room.activePresenterSocketId === targetSocketId) {
         room.activePresenterSocketId = null;
       }
     }
+    room.bannedParticipants.add(targetSocketId);
     room.pendingRequests.delete(targetSocketId);
     return participant;
+  }
+
+  isParticipantBanned(meetingCode, participantId, socketId = null) {
+    const code = this._normCode(meetingCode);
+    const room = this.rooms.get(code);
+    if (!room || !room.bannedParticipants) return false;
+    return (
+      (participantId && room.bannedParticipants.has(participantId)) ||
+      (socketId && room.bannedParticipants.has(socketId))
+    );
   }
 
   updateParticipantState(meetingCode, socketId, updates) {

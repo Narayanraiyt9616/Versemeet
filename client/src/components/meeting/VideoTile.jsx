@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Mic, MicOff, Crown, Pin, PinOff, Monitor } from 'lucide-react';
+import { Mic, MicOff, Crown, Pin, PinOff, Monitor, Hand } from 'lucide-react';
 
 export default function VideoTile({
   stream,
@@ -11,6 +11,7 @@ export default function VideoTile({
   isSpeaking = false,
   isPinned = false,
   isScreenSharing = false,
+  isHandRaised = false,
   onTogglePin
 }) {
   const videoRef = useRef(null);
@@ -87,6 +88,12 @@ export default function VideoTile({
             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50/95 text-amber-800 border border-amber-200/90 shadow-sm backdrop-blur-md">
               <Crown className="w-3.5 h-3.5 fill-current text-amber-600" />
               <span>Host</span>
+            </span>
+          )}
+          {isHandRaised && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100/95 text-amber-900 border border-amber-300 shadow-sm backdrop-blur-md animate-bounce">
+              <Hand className="w-3.5 h-3.5 fill-current text-amber-600" />
+              <span>Hand Raised</span>
             </span>
           )}
           {isScreenSharing && (

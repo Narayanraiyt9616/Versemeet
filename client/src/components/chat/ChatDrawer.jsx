@@ -7,7 +7,8 @@ export default function ChatDrawer({
   messages = [],
   onSendMessage,
   isChatAllowed = true,
-  isHost = false
+  isHost = false,
+  currentSocketId = null
 }) {
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef(null);
@@ -55,7 +56,7 @@ export default function ChatDrawer({
         <button
           type="button"
           onClick={onClose}
-          className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+          className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
           title="Close chat"
         >
           <X className="w-4 h-4" />
@@ -63,7 +64,7 @@ export default function ChatDrawer({
       </div>
 
       {/* Messages Scroll Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3.5 scrollbar-thin bg-white">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin bg-white">
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400">
             <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 mb-2 border border-slate-200/60">
@@ -75,24 +76,31 @@ export default function ChatDrawer({
             </p>
           </div>
         ) : (
-          messages.map((msg) => (
-            <div key={msg.id} className="flex flex-col space-y-1">
-              <div className="flex items-center justify-between text-xs px-1">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-bold text-slate-900">{msg.senderName}</span>
+          messages.map((msg) => {
+            const isSelf = currentSocketId && msg.senderSocketId === currentSocketId;
+            return (
+              <div key={msg.id} className={`flex flex-col space-y-1 ${isSelf ? 'items-end' : 'items-start'}`}>
+                <div className={`flex items-center gap-1.5 text-xs px-1 ${isSelf ? 'flex-row-reverse' : 'flex-row'}`}>
+                  <span className="font-bold text-slate-900">{isSelf ? 'You' : msg.senderName}</span>
                   {msg.senderRole === 'host' && (
                     <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200">
                       <Crown className="w-2.5 h-2.5 fill-current text-amber-600" /> Host
                     </span>
                   )}
+                  <span className="text-[10px] text-slate-400">{formatTime(msg.timestamp)}</span>
                 </div>
-                <span className="text-[10px] text-slate-400">{formatTime(msg.timestamp)}</span>
+                <div
+                  className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-xs sm:text-sm break-words leading-relaxed shadow-xs ${
+                    isSelf
+                      ? 'bg-indigo-600 text-white rounded-tr-xs'
+                      : 'bg-slate-100/90 text-slate-800 border border-slate-200/80 rounded-tl-xs'
+                  }`}
+                >
+                  {msg.text}
+                </div>
               </div>
-              <div className="bg-slate-100/80 border border-slate-200/80 rounded-2xl px-3.5 py-2 text-xs sm:text-sm text-slate-800 break-words leading-relaxed shadow-xs">
-                {msg.text}
-              </div>
-            </div>
-          ))
+            );
+          })
         )}
         <div ref={messagesEndRef} />
       </div>
