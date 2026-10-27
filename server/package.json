@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "test": "node src/tests/e2e_test.js"
+    "test": "node src/tests/e2e_test.js",
+    "test:spa": "node src/tests/spa_routing_test.js"
   },
   "keywords": [],
   "author": "",

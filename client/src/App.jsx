@@ -10,6 +10,7 @@ import JoinMeeting from './pages/JoinMeeting';
 import WaitingRoom from './pages/WaitingRoom';
 import MeetingRoom from './pages/MeetingRoom';
 import MeetingEnded from './pages/MeetingEnded';
+import NotFound from './pages/NotFound';
 
 export default function App() {
   return (
@@ -19,13 +20,15 @@ export default function App() {
         <div className="flex-1 flex flex-col">
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/dashboard" element={<Home />} />
+            <Route path="/login" element={<JoinMeeting />} />
             <Route path="/create" element={<CreateMeeting />} />
             <Route path="/join" element={<JoinMeeting />} />
             <Route path="/join/:meetingCode" element={<WaitingRoom />} />
             <Route path="/waiting/:meetingCode" element={<WaitingRoom />} />
             <Route path="/meeting/:meetingCode" element={<MeetingRoom />} />
             <Route path="/meeting/:meetingCode/ended" element={<MeetingEnded />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </div>
         <Footer />

@@ -1,9 +1,16 @@
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import meetingRoutes from './routes/meetingRoutes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { getDatabaseStatus } from './config/db.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const clientDistPath = path.resolve(__dirname, '../../client/dist');
 
 const app = express();
 
@@ -58,6 +65,22 @@ app.get('/api/health', (req, res) => {
 
 // API Routes
 app.use('/api/meetings', meetingRoutes);
+
+// Static client build serving & SPA fallback
+if (fs.existsSync(clientDistPath)) {
+  app.use(express.static(clientDistPath));
+
+  app.use((req, res, next) => {
+    if (req.method !== 'GET' || req.path.startsWith('/api') || req.path.startsWith('/socket.io')) {
+      return next();
+    }
+    const indexPath = path.join(clientDistPath, 'index.html');
+    if (fs.existsSync(indexPath)) {
+      return res.sendFile(indexPath);
+    }
+    next();
+  });
+}
 
 // Central error handler
 app.use(errorHandler);
