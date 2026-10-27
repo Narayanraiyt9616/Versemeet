@@ -108,15 +108,14 @@ export default function MeetingRoom() {
         const socket = getSocket();
         socketRef.current = socket;
 
-        // Check if user is Host (prioritize sessionStorage for the creator's tab)
-        const isParticipantSession = sessionStorage.getItem(`versemeet_participant_${cleanCode}`) || sessionStorage.getItem('versemeet_name_preset');
-        let hostToken = sessionStorage.getItem(`hostToken_${cleanCode}`);
-        let hostName = sessionStorage.getItem(`hostName_${cleanCode}`);
+        // Check if user is Host:
+        // Priority 1: URL search params (?hostToken=... or ?token=...)
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlHostToken = urlParams.get('hostToken') || urlParams.get('token');
 
-        if (!hostToken && !isParticipantSession) {
-          hostToken = localStorage.getItem(`hostToken_${cleanCode}`);
-          hostName = localStorage.getItem(`hostName_${cleanCode}`) || 'Host';
-        }
+        // Priority 2: sessionStorage (creator tab) or localStorage (persistent on creator device)
+        let hostToken = urlHostToken || sessionStorage.getItem(`hostToken_${cleanCode}`) || localStorage.getItem(`hostToken_${cleanCode}`);
+        let hostName = sessionStorage.getItem(`hostName_${cleanCode}`) || localStorage.getItem(`hostName_${cleanCode}`) || 'Meeting Host';
 
         let userIsHost = false;
         if (hostToken) {
@@ -131,11 +130,21 @@ export default function MeetingRoom() {
         }
 
         if (userIsHost) {
+          // Store verified host credentials in both sessionStorage and localStorage
+          sessionStorage.setItem(`hostToken_${cleanCode}`, hostToken);
+          sessionStorage.setItem(`hostName_${cleanCode}`, hostName);
+          localStorage.setItem(`hostToken_${cleanCode}`, hostToken);
+          localStorage.setItem(`hostName_${cleanCode}`, hostName);
+
+          // Clear any stale participant flags so this tab is cleanly recognized as Host
+          sessionStorage.removeItem(`versemeet_participant_${cleanCode}`);
+          sessionStorage.removeItem('versemeet_name_preset');
+
           setIsHost(true);
           const hostPart = {
             socketId: socket.id,
             participantId: `host-${socket.id?.slice(0, 5)}`,
-            name: hostName || 'Host',
+            name: hostName || meetingData.hostName || 'Meeting Host',
             role: 'host',
             isMuted: false,
             isVideoOff: false
@@ -572,7 +581,7 @@ export default function MeetingRoom() {
   }, [cleanCode, cleanupMedia, navigate]);
 
   const handleEndMeeting = useCallback(() => {
-    const hostToken = localStorage.getItem(`hostToken_${cleanCode}`);
+    const hostToken = sessionStorage.getItem(`hostToken_${cleanCode}`) || localStorage.getItem(`hostToken_${cleanCode}`);
     socketRef.current?.emit('meeting:end-all', {
       meetingCode: cleanCode,
       hostToken

@@ -150,14 +150,23 @@ export const meetingService = {
     }
 
     if (memoryMeetings.has(code)) {
-      return memoryMeetings.get(code).hostToken === hostToken;
+      const match = memoryMeetings.get(code).hostToken === hostToken;
+      if (match && active && !active.hostToken) {
+        active.hostToken = hostToken;
+      }
+      return match;
     }
 
     const dbStatus = getDatabaseStatus();
     if (!dbStatus.isInMemoryFallback) {
       try {
         const doc = await Meeting.findOne({ meetingCode: code, hostToken });
-        return !!doc;
+        if (doc) {
+          if (active && !active.hostToken) {
+            active.hostToken = hostToken;
+          }
+          return true;
+        }
       } catch (err) {
         logger.error(`Host verification error: ${err.message}`);
       }

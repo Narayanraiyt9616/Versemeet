@@ -35,6 +35,10 @@ export function setupMeetingSockets(io) {
           hostName
         });
 
+        if (!room.hostToken && isHostAuthorized) {
+          room.hostToken = hostToken;
+        }
+
         // Verify host authorization matches active room
         if (room.hostToken && room.hostToken !== hostToken) {
           socket.emit('error:unauthorized', { message: 'Invalid host credentials for this meeting.' });

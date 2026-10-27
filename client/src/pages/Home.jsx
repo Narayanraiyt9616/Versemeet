@@ -27,6 +27,7 @@ export default function Home() {
   const [createError, setCreateError] = useState('');
   const [createdData, setCreatedData] = useState(null);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedHostLink, setCopiedHostLink] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
 
   // Join Meeting state
@@ -73,11 +74,23 @@ export default function Home() {
     return `${origin}/meeting/${code}`;
   };
 
+  const getHostUrl = (code, token) => {
+    const origin = import.meta.env.VITE_CLIENT_URL || window.location.origin;
+    return `${origin}/meeting/${code}?hostToken=${encodeURIComponent(token || '')}`;
+  };
+
   const handleCopyLink = () => {
     if (!createdData) return;
     navigator.clipboard.writeText(getMeetingUrl(createdData.meetingCode));
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);
+  };
+
+  const handleCopyHostLink = () => {
+    if (!createdData) return;
+    navigator.clipboard.writeText(getHostUrl(createdData.meetingCode, createdData.hostToken));
+    setCopiedHostLink(true);
+    setTimeout(() => setCopiedHostLink(false), 2000);
   };
 
   const handleCopyCode = () => {
@@ -252,23 +265,54 @@ export default function Home() {
                       </button>
                     </div>
 
-                    {/* Shareable Link */}
+                    {/* Student Shareable Link */}
                     <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
                       <div className="flex items-center justify-between mb-1">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                          Shareable Link
-                        </p>
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                            Student Link (Share to Portal)
+                          </p>
+                          <p className="text-[10px] text-slate-400">
+                            Students will request to join
+                          </p>
+                        </div>
                         <button
                           type="button"
                           onClick={handleCopyLink}
-                          className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
+                          className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer flex-shrink-0"
                         >
                           {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                          <span>{copiedLink ? 'Copied Link!' : 'Copy Link'}</span>
+                          <span>{copiedLink ? 'Copied' : 'Copy Student Link'}</span>
                         </button>
                       </div>
-                      <p className="text-xs font-mono text-slate-600 truncate bg-white p-2 rounded-lg border border-slate-200">
+                      <p className="text-xs font-mono text-slate-600 truncate bg-white p-2 rounded-lg border border-slate-200 mt-1">
                         {getMeetingUrl(createdData.meetingCode)}
+                      </p>
+                    </div>
+
+                    {/* Faculty Host Direct Link */}
+                    <div className="p-3 rounded-xl bg-indigo-50/60 border border-indigo-100">
+                      <div className="flex items-center justify-between mb-1">
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-800 flex items-center gap-1">
+                            <ShieldCheck className="w-3 h-3 text-indigo-600" />
+                            Faculty Host Direct Link
+                          </p>
+                          <p className="text-[10px] text-indigo-600/80">
+                            Direct entry without waiting room
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleCopyHostLink}
+                          className="text-xs font-bold text-indigo-700 hover:text-indigo-900 flex items-center gap-1 cursor-pointer flex-shrink-0"
+                        >
+                          {copiedHostLink ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                          <span>{copiedHostLink ? 'Copied' : 'Copy Host Link'}</span>
+                        </button>
+                      </div>
+                      <p className="text-xs font-mono text-indigo-900/80 truncate bg-white p-2 rounded-lg border border-indigo-200/60 mt-1">
+                        {getHostUrl(createdData.meetingCode, createdData.hostToken)}
                       </p>
                     </div>
 
@@ -276,9 +320,9 @@ export default function Home() {
                     <button
                       type="button"
                       onClick={handleStartMeeting}
-                      className="w-full py-3.5 px-6 rounded-2xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 active:scale-95 text-sm"
+                      className="w-full py-3.5 px-6 rounded-2xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 active:scale-95 text-sm cursor-pointer"
                     >
-                      <span>Start Meeting</span>
+                      <span>Start Meeting as Host</span>
                       <ArrowRight className="w-4 h-4" />
                     </button>
                   </div>

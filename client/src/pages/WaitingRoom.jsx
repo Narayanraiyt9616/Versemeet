@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { getSocket } from '../services/socket';
@@ -34,6 +34,7 @@ export default function WaitingRoom() {
 
   // Waiting states
   const [isRequested, setIsRequested] = useState(false);
+  const [isRejected, setIsRejected] = useState(false);
   const [waitingMessage, setWaitingMessage] = useState('');
   const [rejectionReason, setRejectionReason] = useState(searchParams.get('reason') || null);
   const [meetingEnded, setMeetingEnded] = useState(false);
@@ -47,16 +48,21 @@ export default function WaitingRoom() {
     async function checkMeeting() {
       try {
         setLoading(true);
-        // If this user is the creator host, check sessionStorage (or localStorage if not joining as participant)
-        const isParticipantSession = sessionStorage.getItem('versemeet_name_preset') || sessionStorage.getItem(`versemeet_part_id_${cleanCode}`);
-        let hostToken = sessionStorage.getItem(`hostToken_${cleanCode}`);
-        if (!hostToken && !isParticipantSession) {
-          hostToken = localStorage.getItem(`hostToken_${cleanCode}`);
-        }
+        // Check if user is Host (URL param, sessionStorage, or localStorage)
+        const urlToken = searchParams.get('hostToken') || searchParams.get('token');
+        let hostToken = urlToken || sessionStorage.getItem(`hostToken_${cleanCode}`) || localStorage.getItem(`hostToken_${cleanCode}`);
+        let hostName = sessionStorage.getItem(`hostName_${cleanCode}`) || localStorage.getItem(`hostName_${cleanCode}`) || 'Meeting Host';
+
         if (hostToken) {
           const isHost = await api.verifyHost(cleanCode, hostToken);
           if (isHost) {
             // Direct entry for authorized host
+            sessionStorage.setItem(`hostToken_${cleanCode}`, hostToken);
+            sessionStorage.setItem(`hostName_${cleanCode}`, hostName);
+            localStorage.setItem(`hostToken_${cleanCode}`, hostToken);
+            localStorage.setItem(`hostName_${cleanCode}`, hostName);
+            sessionStorage.removeItem(`versemeet_participant_${cleanCode}`);
+            sessionStorage.removeItem('versemeet_name_preset');
             navigate(`/meeting/${cleanCode}`);
             return;
           }
@@ -88,35 +94,36 @@ export default function WaitingRoom() {
     }
 
     checkMeeting();
-  }, [cleanCode, navigate]);
+  }, [cleanCode, navigate, searchParams]);
 
   // 2. Pre-join media preview (Camera & Mic)
-  useEffect(() => {
-    let localStream = null;
-
-    async function initPreview() {
-      try {
-        localStream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true
-        });
-        streamRef.current = localStream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = localStream;
-        }
-      } catch (err) {
-        console.warn('Waiting room media access denied or limited:', err);
+  const initPreview = useCallback(async () => {
+    try {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
       }
+      const localStream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true
+      });
+      streamRef.current = localStream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = localStream;
+      }
+    } catch (err) {
+      console.warn('Waiting room media access denied or limited:', err);
     }
+  }, []);
 
+  useEffect(() => {
     initPreview();
 
     return () => {
-      if (localStream) {
-        localStream.getTracks().forEach(t => t.stop());
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
       }
     };
-  }, []);
+  }, [initPreview]);
 
   // 3. Socket event listeners for approval/rejection
   useEffect(() => {
@@ -149,8 +156,12 @@ export default function WaitingRoom() {
     };
 
     const handleRejected = (data) => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+      }
       setIsRequested(false);
-      setRejectionReason(data.reason || 'The host has declined your request to join.');
+      setIsRejected(true);
+      setRejectionReason(data.reason || 'The host has declined your request to join this meeting.');
     };
 
     const handleMeetingEnded = () => {
@@ -265,6 +276,60 @@ export default function WaitingRoom() {
           >
             Return to Homepage
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isRejected) {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center p-4 bg-slate-50">
+        <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-rose-200 shadow-2xl text-center space-y-4 animate-in fade-in zoom-in-95">
+          <div className="w-16 h-16 rounded-3xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto border border-rose-200 shadow-sm">
+            <XCircle className="w-8 h-8 stroke-[2.2]" />
+          </div>
+          <div>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold uppercase tracking-wider mb-2">
+              Access Denied
+            </span>
+            <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Request Declined</h2>
+          </div>
+          <p className="text-sm text-slate-600 leading-relaxed">
+            {rejectionReason || 'The host has declined your request to join this meeting.'}
+          </p>
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-500 text-left space-y-1.5">
+            <div className="flex justify-between">
+              <span className="text-slate-400">Meeting:</span>
+              <span className="font-semibold text-slate-700">{meeting?.title || 'CampusVerse Meeting'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">Host:</span>
+              <span className="font-semibold text-slate-700">{meeting?.hostName || 'Host'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">Meeting ID:</span>
+              <span className="font-mono font-bold text-indigo-600">{cleanCode}</span>
+            </div>
+          </div>
+          <div className="pt-2 flex flex-col gap-2.5">
+            <button
+              onClick={() => navigate('/')}
+              className="w-full py-3.5 px-4 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-all text-sm shadow-lg shadow-indigo-600/20 active:scale-95 cursor-pointer"
+            >
+              Return to Homepage
+            </button>
+            <button
+              onClick={() => {
+                setIsRejected(false);
+                setRejectionReason(null);
+                setIsRequested(false);
+                initPreview();
+              }}
+              className="w-full py-2.5 px-4 rounded-xl font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all text-xs cursor-pointer"
+            >
+              Try Again with Different Name
+            </button>
+          </div>
         </div>
       </div>
     );
